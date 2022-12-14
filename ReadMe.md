@@ -48,7 +48,7 @@
 
 安装nodemon工具
 
-    npm i nodemon
+    npm i nodemon -D
 
 编写package.json脚本
 
@@ -193,7 +193,6 @@ APP_PORT=8000
     router.post('/login',login);
     
     module.exports=router;
-    
 
 创建controller/user.controller.js
 
@@ -207,3 +206,61 @@ APP_PORT=8000
     }
     
     module.exports=new UserController();
+
+# 六，解析body
+
+## 1，安装koa-body
+
+    npm install koa-body
+
+## 2，注册中间件
+
+改写app/index.js
+
+![](C:\Users\86184\Desktop\Snipaste_2022-12-14_22-07-39.png)
+
+## 3，解析请求的数据
+
+改写user.controller.js文件
+
+```js
+const {createUser}=require('../service/user.service')
+class UserController{
+    async register(ctx,next){
+        // 获取数据
+        // console.log(ctx.request.body);
+        const {user_name,password}=ctx.request.body;
+        //操作数据库
+        const res=await createUser(user_name,password);
+        console.log(res);
+        //返回结果
+        ctx.body=ctx.request.body;
+    }
+    async login(ctx,next){
+        ctx.body='登录成功'
+    }
+}
+
+
+
+module.exports=new UserController();
+```
+
+## 4，拆分service层
+
+service层主要是做数据库的处理
+
+创建src/service/user.service.js
+
+```js
+class UserService{
+    async createUser(user_name,password){
+        //todo：写入数据库
+        return '写入数据库成功'
+    }
+}
+
+module.exports=new UserService();
+```
+
+
