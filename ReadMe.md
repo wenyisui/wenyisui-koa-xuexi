@@ -323,3 +323,15 @@ MYSQL_USER=root
 MYSQL_PWD=root
 MYSQL_DB=zdsc
 ```
+
+# 八，创建User模型
+
+## 1，拆分Model层
+
+创建src/model/user.model.js
+
+```js
+
+```
+
+
