@@ -81,4 +81,55 @@ APP_PORT=8000
 
 改写main.js
 
+    const Koa=require('koa');
+    
+    const {APP_PORT}=require('./config/config.default');
+    
+    const app=new Koa();
+    
+    app.use((ctx,next)=>{   //中间件
+       ctx.body='hello api'
+    })
+    
+    app.listen(APP_PORT,()=>{
+        console.log(`server is running on http://localhost:${APP_PORT}`);
+    })
+
+# 四.添加路由
+
+路由：根据不同的URL，调用对应的处理函数
+
+## 1，安装koa-router
+
+    npm i koa-router
+
+步骤：
+
+  1，导入包
+
+  2，实例化对象
+
+  3，编写路由
+
+  4，注册中间件
+
+## 2，编写路由
+
+创建src/router目录，编写user.route.js
+
+    const Router=require('koa-router');
+    
+    const router=new Router({prefix:'/users'});
+    
+    
+    // GET /users/
+    router.get('/',(ctx,body)=>{
+        ctx.body='hello users'
+    })
+    
+    
+    module.exports=router;
+
+## 3，改写main.js
+
     
