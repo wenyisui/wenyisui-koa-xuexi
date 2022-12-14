@@ -331,7 +331,151 @@ MYSQL_DB=zdsc
 创建src/model/user.model.js
 
 ```js
+const { DataTypes } = require('sequelize');
 
+const seq = require('../db/seq');
+
+
+//创建模型(Model zd_user ->zd_users)
+const User = seq.define('zd_user', {
+    // id会被sequelize自动创建，管理
+    user_name: {
+        type: DataTypes.STRING,
+        allowNull: false,
+        unique: true,
+        comment: '用户名，唯一',
+    },
+    password: {
+        type: DataTypes.CHAR(64),
+        allowNull: false,
+        comment: '密码'
+    },
+    is_admin: {
+        type: DataTypes.BOOLEAN,
+        allowNull: false,
+        defaultValue: 0,
+        comment:'是否为管理员,0:不是管理员(默认);1:是管理员',
+    }
+})
+//强制同步数据库(创建数据表)
+// User.sync({force:true})
+
+module.exports=User;
 ```
+
+# 九，添加用户入库
+
+```js
+const User=require('../model/user.model')
+class UserService{
+    async createUser(user_name,password){
+        //插入数据
+        // const res= User.create({
+        //     //表的字段
+        //     user_name:user_name,
+        //     password:password
+        // })
+        // console.log(res);
+        //await 表达式：promise对象的值
+       const res= await User.create({user_name,password})
+    //    console.log(res);
+
+
+       return res.dataValues;
+    }
+}
+
+module.exports=new UserService();
+```
+
+# 十，错误处理
+
+在控制器中，对不同的错误进行处理，返回不同的提示错误提示，提高代码质量
+
+```js
+const {createUser,getUserInfo}=require('../service/user.service')
+class UserController{
+    async register(ctx,next){
+        // 获取数据
+        // console.log(ctx.request.body);
+        const {user_name,password}=ctx.request.body;
+        //合法性
+        if(!user_name||!password){
+            console.error('用户名或密码为空',ctx.request.body)
+            ctx.status=400;
+            ctx.body={
+                code:'10001',
+                message:'用户名或密码为空',
+                result:'',
+            }
+            return;
+        }
+        //合理性
+        if(getUserInfo(user_name)){
+            ctx.status=409;
+            ctx.body={
+                code:'10002',
+                message:'用户已经存在',
+                result:'',
+            }
+            return;
+        }
+        //操作数据库
+        const res=await createUser(user_name,password);
+        console.log(res);
+        //返回结果
+        ctx.body={
+            code:0,
+            message:'用户注册成功',
+            result:{
+                id:res.id,
+                user_name:res.user_name,
+            }
+        };
+    }
+    async login(ctx,next){
+        ctx.body='登录成功'
+    }
+}
+
+module.exports=new UserController();
+```
+
+在service中封装函数
+
+```js
+const User=require('../model/user.model')
+class UserService{
+    async createUser(user_name,password){
+        //插入数据
+        //await 表达式：promise对象的值
+       const res= await User.create({user_name,password})
+    //    console.log(res);
+
+
+       return res.dataValues;
+    }
+
+    async getUserInfo({id,user_name,password,is_admin}){
+        const whereOpt={}
+        
+        id&&Object.assign(whereOpt,{id})
+        user_name&&Object.assign(whereOpt,{user_name})
+        password&&Object.assign(whereOpt,{password})
+        is_admin&&Object.assign(whereOpt,{is_admin})
+
+        const res=await User.findOne({
+            attributes:['id','user_name','password','is_admin'],
+            where:whereOpt,
+        })
+
+        return res?res.dataValues:null;
+    }
+}
+
+module.exports=new UserService();
+```
+
+# 十一，拆分中间件
 
 

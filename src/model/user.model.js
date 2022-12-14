@@ -8,8 +8,8 @@ const User = seq.define('zd_user', {
     // id会被sequelize自动创建，管理
     user_name: {
         type: DataTypes.STRING,
-        allowNull: false,  //不能为空
-        unique: true,  //唯一
+        allowNull: false,
+        unique: true,
         comment: '用户名，唯一',
     },
     password: {
@@ -20,7 +20,7 @@ const User = seq.define('zd_user', {
     is_admin: {
         type: DataTypes.BOOLEAN,
         allowNull: false,
-        default: 0,
+        defaultValue: 0,
         comment:'是否为管理员,0:不是管理员(默认);1:是管理员',
     }
 })
