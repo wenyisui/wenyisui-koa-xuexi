@@ -725,3 +725,69 @@ jwt: jsonwebtoken
 1，安装jsonwentoken
 
     npm i jsonwebtoken
+
+控制器
+
+```js
+ async login(ctx, next) {
+        const { user_name }=ctx.request.body;
+
+        // 1，获取用户信息(在token的payload,记录id,user_name,is_admin)
+        try {
+            // 从返回结果对象中剔除password属性，将剩下的属性放到res新的对象
+            const {password,...res}= await getUserInfo({user_name});
+
+            ctx.body={
+                code:0,
+                message:'用户登录成功',
+                result:{
+                    token:jwt.sign(res,JWT_SECRET,{expiresIn:'1d'}),
+                }
+            }
+        } catch (err) {
+            console.error('用户登录失败',err);
+        }
+    }
+```
+
+# 十五，修改密码跑通
+
+src/middleware/auth.middleware.js
+
+遇到的bug,注意
+
+    const token = authorization.replace('Bearer ', '');不要写成const token = authorization.replace('Bearer', '');
+
+```js
+const jwt = require('jsonwebtoken');
+const { JWT_SECRET } = require('../config/config.default')
+
+const { tokenExpiredError, invalidToken } = require('../constant/err.type')
+const auth = async (ctx, next) => {
+    const { authorization } = ctx.request.header;
+    const token = authorization.replace('Bearer ', '');
+    console.log(token);
+
+    try {
+        // user中包含了payload的信息(id,user_name,is_admin)
+        const user = jwt.verify(token, JWT_SECRET);
+        ctx.state.user = user;
+    } catch (err) {
+        switch (err.name) {
+            case 'TokenExpiredError':
+                console.error('token已过期', err);
+                ctx.app.emit('error', tokenExpiredError, ctx);
+                return;
+            case 'JsonWebTokenError':
+                console.error('无效的token', err);
+                ctx.app.emit('error', invalidToken, ctx);
+                return
+        }
+    }
+    await next();
+}
+
+module.exports = {
+    auth
+}
+```

@@ -1,6 +1,6 @@
 const bcrypt = require('bcryptjs');
 const { getUserInfo } = require('../service/user.service')
-const { userFormateError, userAlreadyExited, userRegisterError, userDoesNotExist, useLoginError, invalidPassword } = require('../constant/err.type')
+const { userFormateError, userAlreadyExited, userRegisterError, userDoesNotExist, useLoginError, invalidPassword} = require('../constant/err.type')
 const useValidator = async (ctx, next) => {
     const { user_name, password } = ctx.request.body;
     //合法性
