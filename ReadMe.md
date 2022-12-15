@@ -458,7 +458,7 @@ class UserService{
 
     async getUserInfo({id,user_name,password,is_admin}){
         const whereOpt={}
-        
+
         id&&Object.assign(whereOpt,{id})
         user_name&&Object.assign(whereOpt,{user_name})
         password&&Object.assign(whereOpt,{password})
@@ -478,4 +478,250 @@ module.exports=new UserService();
 
 # 十一，拆分中间件
 
+为了使代码的逻辑更加清晰，我们可以拆分一个中间件层，封装多个中间件函数
 
+![](C:\Users\86184\Desktop\Snipaste_2022-12-15_02-13-03.png)
+
+## 1，拆分中间件
+
+添加src/middleware/user.middleware.js
+
+```js
+const {getUserInfo}=require('../service/user.service')
+const {userFormateError,userAlreadyExited,userRegisterError}=require('../constant/err.type')
+const useValidator=async(ctx,next)=>{
+    const {user_name,password}=ctx.request.body;
+    //合法性
+    if(!user_name||!password){
+        console.error('用户名或密码为空',ctx.request.body)
+        ctx.app.emit('error',userFormateError,ctx);
+        return;
+    }
+    await next();
+}
+const verifyUser=async(ctx,next)=>{
+    const {user_name,password}=ctx.request.body;
+    //合理性
+    // if(await getUserInfo(user_name)){
+    //     ctx.app.emit('error',userAlreadyExited,ctx);
+    //     return;
+    // }
+    try {
+        const res=await getUserInfo({user_name});
+        if(res){
+            console.error('用户名已经存在', {user_name});
+            ctx.app.emit('error',userAlreadyExited,ctx);
+            return;
+        }
+    } catch (err) {
+        console.error('获取用户信息错误', err);
+        ctx.app.emit('error',userRegisterError,ctx);
+        return;
+    }
+    await next();
+}
+module.exports={
+    useValidator,
+    verifyUser
+}
+```
+
+## 2，拆分中间件
+
+  ·在出错的地方使用ctx.app.emit提交错误
+
+  ·在app中通过app.on监听
+
+编写统一的错误定义文件
+
+src/constant/err.type.js
+
+```js
+module.exports={
+    userFormateError:{
+        code:'10001',
+        message:'用户名或密码为空',
+        result:''
+    },
+    userAlreadyExited:{
+        code:'10002',
+        message:'用户已经存在',
+        result:''
+    },
+    userRegisterError:{
+        code:'10003',
+        message:'用户注册错误',
+        result:''
+    }
+}
+```
+
+## 3，错误处理函数
+
+```js
+module.exports=(err,ctx)=>{
+    let status=500;
+    switch(err.code){
+        case '10001':
+          status=400
+          break
+        case '10002':
+          status=400
+          break
+        default:
+          status=500
+    }
+    ctx.status=status
+    ctx.body=err;
+}
+```
+
+改写app/index.js
+
+```js
+const errHandler=require('./errHandler')
+//进行统一的错误处理
+app.on('error',errHandler)
+```
+
+# 十二，加密
+
+在将密码保存到数据库之前，要对密码进行加密处理
+
+123123abc(加盐)加盐加密
+
+## 1，安装bcryptjs
+
+    npm i bcryptjs
+
+## 2，编写加密中间件
+
+```js
+const crpyPassword=async(ctx,next)=>{
+    const {password}=ctx.request.body;
+    const salt = bcrypt.genSaltSync(10);  //加盐
+    //hash保存的使 密文
+    const hash = bcrypt.hashSync(password, salt);
+
+    ctx.request.body.password=hash;
+
+    await next();
+}
+module.exports={
+    useValidator,
+    verifyUser,
+    crpyPassword
+}
+```
+
+## 3，在router中使用
+
+```js
+const Router=require('koa-router');
+
+const {useValidator,verifyUser,crpyPassword}=require('../middleware/user.middleware')
+const {register,login}=require('../controller/user.controller')
+
+const router=new Router({prefix:'/users'});
+
+//注册接口
+router.post('/register',useValidator,verifyUser,crpyPassword,register)
+//登录接口
+router.post('/login',login);
+
+module.exports=router;
+```
+
+# 十三，用户登录验证
+
+1，判断用户是否存在2，密码是否匹配
+
+src/constant/err.type.js
+
+```js
+module.exports={
+    userFormateError:{
+        code:'10001',
+        message:'用户名或密码为空',
+        result:''
+    },
+    userAlreadyExited:{
+        code:'10002',
+        message:'用户已经存在',
+        result:''
+    },
+    userRegisterError:{
+        code:'10003',
+        message:'用户注册错误',
+        result:''
+    },
+    userDoesNotExist:{
+        code:'10004',
+        message:'用户不存在',
+        result:''
+    },
+    useLoginError:{
+        code:'10005',
+        message:'用户登录失败',
+        result:''
+    },
+    invalidPassword:{
+        code:'10006',
+        message:'密码不匹配',
+        result:''
+    }
+}
+```
+
+中间件
+
+```js
+const verifyLogin = async (ctx, next) => {
+    //1，判断用户是否存在(不存在：报错)
+    const { user_name, password } = ctx.request.body;
+
+    try {
+        const res = await getUserInfo({ user_name });
+
+        if (!res) {
+            console.error('用户名不存在', { user_name });
+            ctx.app.emit('error', userDoesNotExist, ctx);
+            return;
+        }
+        //2，密码是否匹配(不匹配：报错)
+        if (!bcrypt.compareSync(password, res.password)) {
+            ctx.app.emit('error', invalidPassword, ctx);
+            return;
+        }
+    } catch (err) {
+        console.error(err);
+        ctx.app.emit('error', useLoginError, ctx);
+        return;
+    }
+
+    await next();
+}
+```
+
+改写路由
+
+```js
+//登录接口
+router.post('/login',useValidator,verifyLogin,login);
+```
+
+# 十四，用户的认证与授权
+
+登录成功后，给用户颁发一个令牌token，用户在以后的每一次请求中携带这个令牌
+
+jwt: jsonwebtoken
+
+ ·header:头部
+
+·payload:载荷
+
+·signature:签名
+
+1，安装jsonwentoken
+
+    npm i jsonwebtoken
