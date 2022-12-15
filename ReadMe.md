@@ -1011,4 +1011,6 @@ module.exports=new GoodsController();
 
 # 十九，上传图片类型判断
 
+goods控制层
 
+```js
