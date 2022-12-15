@@ -791,3 +791,101 @@ module.exports = {
     auth
 }
 ```
+
+service层
+
+```js
+async updateById({id,user_name,password,is_admin}){
+        const whereOpt={id};
+        const newUser={};
+
+        user_name&&Object.assign(newUser,{user_name});
+        password&&Object.assign(newUser,{password});
+        is_admin&&Object.assign(newUser,{is_admin});
+
+        const res=await User.update(newUser,{where:whereOpt});
+        // console.log(res);
+        return res[0]>0?true:false;
+    }
+```
+
+controller层
+
+```js
+async changePassword(ctx,next){
+        //1，获取数据
+        const id=ctx.state.user.id;
+        const password=ctx.request.body.password;
+        // console.log(id,password);
+        //2，操作数据库
+        if(await updateById({id,password})){
+            ctx.body={
+                code:0,
+                message:'修改密码成功',
+                result:''
+            }
+        }else{
+            ctx.body={
+                code:'10007',
+                message:'修改密码失败',
+                result:''
+            }
+        }
+        //3，返回结果
+    }
+```
+
+路由
+
+```js
+//修改密码接口
+router.patch('/', auth, crpyPassword,changePassword);
+```
+
+# 十六，路由文件实现自动加载
+
+需要加其他路由直接在router里加文件就可以
+
+## 1,在router下创建index.js
+
+```js
+const fs=require('fs');
+
+const Router=require('koa-router');
+const router=new Router();
+
+fs.readdirSync(__dirname).forEach(file=>{
+    // console.log(file);
+    if(file!=='index.js'){
+       let r= require('./'+file)
+       router.use(r.routes())
+    }
+})
+
+module.exports=router;
+```
+
+## 2,更改app/index.js里面代码
+
+```js
+const Koa=require('koa');
+const {koaBody}=require('koa-body');
+
+const errHandler=require('./errHandler')
+
+// const userRouter=require('../router/user.route')
+// const goodsRouter=require('../router/goods.route')
+const router=require('../router');
+
+const app=new Koa();
+
+app.use(koaBody());
+app.use(router.routes());
+// app.use(userRouter.routes());
+// app.use(goodsRouter.routes());
+app.use(router.allowedMethods());  //router的方法
+
+//进行统一的错误处理
+app.on('error',errHandler)
+module.exports=app;
+```
