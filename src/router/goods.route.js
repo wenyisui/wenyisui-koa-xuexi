@@ -1,9 +1,12 @@
 const Router=require('koa-router');
 
-const {upload}=require('../controller/goods.controller')
+const { auth ,hasAdminPermission}=require('../middleware/auth.middleware');
+
+const { upload }=require('../controller/goods.controller')
 
 const router=new Router({prefix:'/goods'});
 
-router.post('/upload',upload);
+//上传图片
+router.post('/upload', auth, hasAdminPermission, upload);
 
 module.exports=router;

@@ -846,6 +846,8 @@ router.patch('/', auth, crpyPassword,changePassword);
 
 需要加其他路由直接在router里加文件就可以
 
+读取当前文件下所有的路由文件脚本
+
 ## 1,在router下创建index.js
 
 ```js
@@ -889,3 +891,42 @@ app.use(router.allowedMethods());  //router的方法
 app.on('error',errHandler)
 module.exports=app;
 ```
+
+# 十七，封装管理员权限
+
+1，判断是否登录2，判断是否有管理员权限
+
+中间件层
+
+```js
+const hasAdminPermission=async(ctx,next)=>{
+    const {is_admin}=ctx.state.user;
+
+    if(!is_admin){
+        console.error('该用户没有管理员的权限',ctx.state.user);
+        return ctx.app.emit('error',hasNotAdminPermission,ctx);
+    }
+    await next();
+}
+
+module.exports = {
+    auth,
+    hasAdminPermission
+}
+```
+
+错误处理
+
+```js
+hasNotAdminPermission:{
+        code:'10103',
+        message:'没有管理员权限',
+        result:''
+    }
+```
+
+路由router/goods.route.js
+
+```js
+
+
