@@ -928,5 +928,87 @@ hasNotAdminPermission:{
 路由router/goods.route.js
 
 ```js
+//上传图片
+router.post('/upload', auth, hasAdminPermission, upload);
+```
+
+# 十八，商品图片上传
+
+## 1，文件上传
+
+1，前端选择一个文件发送请求
+
+2，后端把文件读取出来复制到对应的文件目录下面，然后给前端返回
+
+### 1,路由层src/router/goods.route.js
+
+```js
+const Router=require('koa-router');
+
+const { auth ,hasAdminPermission}=require('../middleware/auth.middleware');
+
+const { upload }=require('../controller/goods.controller')
+
+const router=new Router({prefix:'/goods'});
+
+//上传图片
+router.post('/upload', auth, hasAdminPermission, upload);
+
+module.exports=router;
+```
+
+### 2,app/index.js中koa-body配置以及静态资源配置
+
+```js
+const KoaStatic = require('koa-static');
+app.use(koaBody({
+    multipart:true,
+    formidable:{
+        // 在配置选项option里，不推荐使用相对路径
+        //在option里的相对路径，不是相对的当前文件，相对process.cwd()
+        uploadDir:path.join(__dirname,'../upload'),
+        keepExtensions:true,
+    }
+}));
+app.use(KoaStatic(path.join(__dirname,'../upload')));
+app.use(router.routes());
+// app.use(userRouter.routes());
+// app.use(goodsRouter.routes());
+app.use(router.allowedMethods());  //router的方法
+
+//进行统一的错误处理
+app.on('error',errHandler)
+module.exports=app;
+```
+
+### 3，控制层src/controller/goods.controller.js
+
+```js
+const path=require('path');
+
+const {fileUploadError}=require('../constant/err.type')
+class GoodsController{
+    async upload(ctx,next){
+        // console.log(ctx.request.files.file);
+        const {file}=ctx.request.files;
+        if(file){
+            ctx.body={
+                code:0,
+                message:'商品图片上传成功',
+                result:{
+                    goods_img:path.basename(file.filepath)
+                }
+            }
+        }else{
+           return ctx.app.emit('error',fileUploadError,ctx)
+        }
+    }
+}
+
+
+module.exports=new GoodsController();
+```
+
+# 十九，上传图片类型判断
 
 
